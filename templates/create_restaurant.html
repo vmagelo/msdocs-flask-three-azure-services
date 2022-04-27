@@ -1,17 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Restaurant Create{% endblock %}
-{% block head %}
-    {{ super() }}
-    <style>
-      body {
-          min-height: 75rem;
-          padding-top: 4.5rem;
-      }
-  </style>
-{% endblock %}
 {% block content %}
     <h1>Add New Restaurant</h1>
-
+    <p>{{ error_message }}.</p>
     <form method="POST" action="{{ url_for('add_restaurant') }}">
         <div class="mb-3">
           <label for="restaurant_name" class="form-label">Name</label>

@@ -22,6 +22,7 @@ class Review(db.Model):
     rating = Column(Integer)
     review_text = Column(String(500))
     review_date = Column(DateTime)
+    image_name = Column(String(100))
 
     @validates('rating')
     def validate_rating(self, key, value):

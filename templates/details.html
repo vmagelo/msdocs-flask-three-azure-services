@@ -1,14 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Restaurant Details{% endblock %}
-{% block head %}
-    {{ super() }}
-    <style>
-      body {
-          min-height: 75rem;
-          padding-top: 4.5rem;
-      }
-  </style>
-{% endblock %}
 {% block content %}
   <h1>{{ restaurant.name }}</h1> 
   <div class="row">
@@ -25,7 +16,7 @@
   </div>
 
   <h4 class="mt-5">Reviews</h4>
-
+  <p>{{ error_message }}</p>
   <p>
       <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addReviewModal">
           Add new review
@@ -41,6 +32,7 @@
                     <th>User</th>
                     <th>Rating</th>
                     <th>Review</th>
+                    <th>Photo</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,6 +42,13 @@
                         <td>{{ review.user_name }}</td>
                         <td>{{ review.rating }}</td>
                         <td>{{ review.review_text }}</td>
+                        <td>
+                          {% if review.image_name %}
+                          <a href="https://{{account}}.blob.core.windows.net/{{container}}/{{review.image_name}}">
+                            <img height="40" src="https://{{account}}.blob.core.windows.net/{{container}}/{{review.image_name}}"/>
+                          </a>
+                        {% endif %}
+                      </td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -66,7 +65,7 @@
             <h5 class="modal-title" id="addReviewModalLabel">Add Review</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-              <form method="POST" action="{{ url_for('add_review', id=restaurant.id) }}">
+              <form method="POST" action="{{ url_for('add_review', id=restaurant.id) }}" enctype="multipart/form-data">
 
               <div class="modal-body">
 
@@ -101,6 +100,10 @@
                   <div class="mb-3">
                       <label for="review_text" class="form-label fw-bold">Comments</label>
                       <input type="text" class="form-control" id="review_text" name="review_text">
+                  </div>
+                  <div class="mb-3">
+                    <label for="reviewImage" class="form-label">Add a photo (limits: 1 image, less than 2 MB, png or jpg)</label>
+                    <input type="file" class="form-control" id="reviewImage" name="reviewImage" accept="image/png, image/jpeg">                    
                   </div>
               </div>
               <div class="modal-footer">
