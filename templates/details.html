@@ -16,7 +16,7 @@
   </div>
 
   <h4 class="mt-5">Reviews</h4>
-  <p>{{ error_message }}</p>
+  <p class="text-warning">{{ message }}</p>
   <p>
       <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addReviewModal">
           Add new review
@@ -44,8 +44,8 @@
                         <td>{{ review.review_text }}</td>
                         <td>
                           {% if review.image_name %}
-                          <a href="https://{{account}}.blob.core.windows.net/{{container}}/{{review.image_name}}">
-                            <img height="40" src="https://{{account}}.blob.core.windows.net/{{container}}/{{review.image_name}}"/>
+                          <a href="{{image_path}}/{{review.image_name}}">
+                            <img height="40" src="{{image_path}}/{{review.image_name}}"/>
                           </a>
                         {% endif %}
                       </td>

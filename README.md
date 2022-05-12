@@ -10,6 +10,10 @@ This is a Python web app using the Flask framework with three Azure services: Az
 
 A Django sample application is also available for the article at https://github.com/vmagelo/msdocs-django-three-azure-services.
 
+## Todo
+
+1. Swap out psycopg2 for psycopg2-binary.
+
 ## Deployment
 
 Create all Azure resources in the same group.
