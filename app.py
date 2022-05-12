@@ -3,9 +3,16 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from datetime import datetime
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+from werkzeug.utils import secure_filename
 import os
+import uuid
+
+from requests import RequestException
 
 app = Flask(__name__, static_folder='static')
+app.config['UPLOAD_FOLDER'] = '/uploads'
 csrf = CSRFProtect(app)
 
 # WEBSITE_HOSTNAME exists only in production environment
@@ -44,11 +51,15 @@ def index():
 
 @app.route('/<int:id>', methods=['GET'])
 def details(id):
+    return details(id,'')
+
+def details(id, message):
     from models import Restaurant, Review
     restaurant = Restaurant.query.where(Restaurant.id == id).first()
     reviews = Review.query.where(Review.restaurant==id)
-    return render_template('details.html', restaurant=restaurant, reviews=reviews, 
-        account=os.environ['STORAGE_ACCOUNT_NAME'], container=os.environ['STORAGE_CONTAINER_NAME'])
+    account_url = get_account_url()
+    image_path = account_url + "/" + os.environ['STORAGE_CONTAINER_NAME']
+    return render_template('details.html', restaurant=restaurant, reviews=reviews, message=message, image_path=image_path)
 
 @app.route('/create', methods=['GET'])
 def create_restaurant():
@@ -63,11 +74,12 @@ def add_restaurant():
         name = request.values.get('restaurant_name')
         street_address = request.values.get('street_address')
         description = request.values.get('description')
-    except (KeyError):
+        if (name == "" and description == "" ):
+            raise RequestException()
+    except (KeyError, RequestException):
         # Redisplay the restaurant entry form.
-        return render_template('add_restaurant.html', {
-            'error_message': "You must include a restaurant name, address, and description",
-        })
+        return render_template('create_restaurant.html', 
+            message='Restaurant not added. Include at least a restaurant name and description.')
     else:
         restaurant = Restaurant()
         restaurant.name = name
@@ -85,19 +97,61 @@ def add_review(id):
     try:
         user_name = request.values.get('user_name')
         rating = request.values.get('rating')
-        review_text = request.values.get('review_text')
-    except (KeyError):
-        #Redisplay the question voting form.
-        return render_template('add_review.html', {
-            'error_message': 'Review not added. Include at least name and rating for review.',
-        })
+        review_text = request.values.get('review_text')   
+        if (user_name == "" or rating == None ):
+            raise RequestException()
+    except (KeyError, RequestException):
+        # Redisplay the review form.
+        from models import Restaurant
+        restaurant = Restaurant.query.where(Restaurant.id == id).first()
+        reviews = Review.query.where(Review.restaurant==id)
+        return details(id, 'Review not added. Include at least a name and rating for review.')
     else:
+        if request.files['reviewImage']:
+            image_data = request.files['reviewImage']
+
+            # Get size.
+            # blob = request.files['reviewImage'].read()
+            # size = len(blob)
+            size = 1
+
+            print("Original image name = " + image_data.filename)
+            print("File size = " + str(size))
+
+            if (size > 2048000):
+                return details(id, 'Image too big, try again.')
+
+            # Get account_url based on environment
+            account_url = get_account_url()
+            print("account_url = " + account_url)
+
+            # Create client
+            azure_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
+            blob_service_client = BlobServiceClient(
+                account_url=account_url,
+                credential=azure_credential)
+
+            # Get file name to use in database
+            image_name = str(uuid.uuid4()) + ".png"
+            
+            # Create blob client
+            blob_client = blob_service_client.get_blob_client(container=os.environ['STORAGE_CONTAINER_NAME'], blob=image_name)
+            print("\nUploading to Azure Storage as blob:\n\t" + image_name)
+
+            blob_client.upload_blob(image_data)
+            # Upload file
+            # blob_client.upload_blob(image_data.read())
+        else:
+            # No image for review
+            image_name=None
+
         review = Review()
         review.restaurant = id
         review.review_date = datetime.now()
         review.user_name = user_name
         review.rating = int(rating)
         review.review_text = review_text
+        review.image_name = image_name
         db.session.add(review)
         db.session.commit()
                 
@@ -115,7 +169,7 @@ def utility_processor():
             ratings += [review.rating]
             review_count += 1
 
-        avg_rating = sum(ratings)/len(ratings) if ratings else 0
+        avg_rating = round(sum(ratings)/len(ratings), 2) if ratings else 0
         stars_percent = round((avg_rating / 5.0) * 100) if review_count > 0 else 0
         return {'avg_rating': avg_rating, 'review_count': review_count, 'stars_percent': stars_percent}
 
@@ -125,6 +179,13 @@ def utility_processor():
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+def get_account_url():
+    if 'WEBSITE_HOSTNAME' in os.environ or ("USE_AZURE_STORAGE" in os.environ):
+        print("Using Azure Storage.")
+        return "https://%s.blob.core.windows.net" % os.environ['STORAGE_ACCOUNT_NAME']
+    else:
+        return os.environ['STORAGE_ACCOUNT_NAME']
 
 if __name__ == '__main__':
    app.run()
