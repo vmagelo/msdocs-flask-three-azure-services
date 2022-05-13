@@ -5,14 +5,12 @@ from flask_wtf.csrf import CSRFProtect
 from datetime import datetime
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
-from werkzeug.utils import secure_filename
 import os
 import uuid
 
 from requests import RequestException
 
 app = Flask(__name__, static_folder='static')
-app.config['UPLOAD_FOLDER'] = '/uploads'
 csrf = CSRFProtect(app)
 
 # WEBSITE_HOSTNAME exists only in production environment
@@ -111,9 +109,8 @@ def add_review(id):
             image_data = request.files['reviewImage']
 
             # Get size.
-            # blob = request.files['reviewImage'].read()
-            # size = len(blob)
-            size = 1
+            size = len(image_data.read())
+            image_data.seek(0)
 
             print("Original image name = " + image_data.filename)
             print("File size = " + str(size))
@@ -138,9 +135,8 @@ def add_review(id):
             blob_client = blob_service_client.get_blob_client(container=os.environ['STORAGE_CONTAINER_NAME'], blob=image_name)
             print("\nUploading to Azure Storage as blob:\n\t" + image_name)
 
-            blob_client.upload_blob(image_data)
             # Upload file
-            # blob_client.upload_blob(image_data.read())
+            blob_client.upload_blob(image_data)
         else:
             # No image for review
             image_name=None
@@ -181,7 +177,7 @@ def favicon():
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 def get_account_url():
-    if 'WEBSITE_HOSTNAME' in os.environ or ("USE_AZURE_STORAGE" in os.environ):
+    if 'WEBSITE_HOSTNAME' in os.environ or ("LOCAL_USE_AZURE_STORAGE" in os.environ):
         print("Using Azure Storage.")
         return "https://%s.blob.core.windows.net" % os.environ['STORAGE_ACCOUNT_NAME']
     else:
