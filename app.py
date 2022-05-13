@@ -72,7 +72,7 @@ def add_restaurant():
         name = request.values.get('restaurant_name')
         street_address = request.values.get('street_address')
         description = request.values.get('description')
-        if (name == "" and description == "" ):
+        if (name == "" or description == "" ):
             raise RequestException()
     except (KeyError, RequestException):
         # Redisplay the restaurant entry form.
@@ -96,7 +96,7 @@ def add_review(id):
         user_name = request.values.get('user_name')
         rating = request.values.get('rating')
         review_text = request.values.get('review_text')   
-        if (user_name == "" or rating == None ):
+        if (user_name == "" or rating == None):
             raise RequestException()
     except (KeyError, RequestException):
         # Redisplay the review form.
